@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifa Electrónica</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            overflow: hidden; /* Evita que aparezcan las barras de desplazamiento */
+        }
+        #confetti-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-green-900 text-white">
+    <div class="w-full min-h-screen flex flex-col items-center justify-center">
+        <h1 class="text-4xl font-bold text-red-600 mb-4">Rifa Electrónica</h1>
+        <canvas id="confetti-canvas"></canvas>
+
+        <span id="resultMessage"></span>
+        <img id="resultImage" src="/gameover.png" style="display: none;">
+        <!-- Carga confetti-js desde un CDN -->
+        <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
+        <script>
+            // Función para activar el efecto de confeti
+            function startConfetti() {
+                if (typeof ConfettiGenerator !== 'undefined') {
+                    const confettiSettings = { target: 'confetti-canvas' };
+                    const confettiEffect = new ConfettiGenerator(confettiSettings);
+                    confettiEffect.render();
+                }
+            }
+
+            // Función para analizar los parámetros de la URL
+            function checkURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const raffleNumber = urlParams.get('raffle');
+                if (raffleNumber) {
+                    // Realizar la verificación basada en el número de la rifa
+                    checkRaffleByNumber(raffleNumber);
+                }
+            }
+
+            // Función para verificar la rifa por número
+            function checkRaffleByNumber(raffleNumber) {
+    const resultMessage = document.getElementById('resultMessage');
+    getWinningNumber()
+        .then(winningNumber => {
+            console.log('Número ganador:', winningNumber);
+            console.log('Número de la rifa escaneada:', raffleNumber);
+
+            if (parseInt(raffleNumber) === winningNumber) {
+                console.log('Ganador');
+                resultMessage.innerText = '¡Eres un ganador!';
+                startConfetti(); // Activa el efecto de confeti
+            } else {
+                console.log('No ganador');
+                resultMessage.innerText = ''; // Borrar el mensaje de texto
+                    resultImage.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error al obtener el número ganador:', error);
+            resultMessage.innerText = '¡Siga participando!';
+        });
+}
+
+
+            // Función para obtener el número ganador (desde tu servidor)
+            function getWinningNumber() {
+                return fetch('/winningNumber')
+                    .then(response => response.json())
+                    .then(data => data.winningNumber)
+                    .catch(error => {
+                        console.error('Error al obtener el número ganador:', error);
+                        return 0; // Retorna un valor predeterminado en caso de error
+                    });
+            }
+
+            // Llama a la función de verificación cuando se carga la página
+            checkURLParams();
+        </script>
+    </div>
+</body>
+</html>

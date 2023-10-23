@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifa Electrónica</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-green-900 text-white">
+    <div class="w-full min-h-screen flex flex-col items-center justify-center">
+        <h1 class="text-4xl font-bold text-red-600 mb-4">Rifa Electrónica</h1>
+
+        <button id="generateRaffle" onclick="generateRaffles()" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Generar Rifas</button>
+
+        <div id="message" class="mt-4">
+        </div>
+
+    </div>
+
+    <script src="qrcode.min.js"></script>
+    <script>
+        function generateRaffles() {
+            fetch('/raffle', {
+                method: 'POST'
+            })
+            .then(response => response.text())
+            .then(() => {
+                document.getElementById('message').innerText = 'Código QR generado';
+            })
+            .catch(error => {
+                console.error('Error al generar rifas:', error);
+                document.getElementById('message').innerText = 'Error al generar los códigos QR';
+            });
+        }
+    </script>
+</body>
+</html>
