@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class=" bg-gray-900 text-white py-4 flex items-center justify-between">
+    <h1 class="mx-auto text-3xl">Panel de Administración</h1>
+    <a href="/logout" class="mx-auto text-red-500 hover:text-red-600">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v10m0 0l-3-3m3 3l3-3"/>
+      </svg>
+      Logout
+    </a>
+  </div>
+
+  <div class="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-lg">
+    <label for="winnerCount" class="text-lg font-semibold mb-2">Cantidad de Ganadores:</label>
+    <input type="number" id="winnerCount" min="1" class="border rounded p-2 mb-4">
+    <br>
+    <label for="qrCount" class="text-lg font-semibold mb-2">Cantidad de Códigos QR:</label>
+    <input type="number" id="qrCount" min="1" max="10000" class="border rounded p-2 mb-4">
+    <button id="generateRaffle" onclick="generateRaffles()" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Generar Rifas</button>
+    <p id="message" class="mt-2 text-red-600"></p>
+    <!-- Agregar un div contenedor para los números ganadores -->
+    <div id="winningNumbers">
+      <h3 class="text-lg font-semibold">Números Ganadores</h3>
+      <table class="border-collapse border border-gray-600">
+        <thead>
+          <tr>
+            <th class="border border-gray-600 p-2">Ganador</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Los números ganadores se mostrarán aquí -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="qrcode.min.js"></script>
+  <script>
+    async function loadWinningNumber() {
+      try {
+        const response = await fetch('/winningNumbers');
+        if (response.ok) {
+          const data = await response.json();
+          const winningNumbers = data.winningNumbers;
+          
+          // Selecciona el elemento contenedor de la tabla
+          const tableBody = document.querySelector('#winningNumbers tbody');
+          // Limpia el contenido anterior
+          tableBody.innerHTML = '';
+          
+          // Agrega filas a la tabla para cada número ganador
+          winningNumbers.forEach(number => {
+            const row = tableBody.insertRow();
+            const cell = row.insertCell();
+            cell.textContent = number;
+            cell.classList.add('border', 'border-gray-600', 'p-2');
+          });
+        } else {
+          document.getElementById('winningNumbers').textContent = 'No se pudo cargar el número ganador';
+        }
+      } catch (error) {
+        console.error('Error al cargar el número ganador:', error);
+        document.getElementById('winningNumbers').textContent = 'Error al cargar el número ganador';
+      }
+    }
+  </script>
+  <script>
+    function generateRaffles() {
+      const qrCount = document.getElementById('qrCount').value;
+      const winnerCount = document.getElementById('winnerCount').value; // Obtén la cantidad de ganadores
+
+      if (qrCount < 1 || qrCount > 10000 || winnerCount < 1) {
+        document.getElementById('message').innerText = 'Ingrese una cantidad válida de códigos QR (entre 1 y 10000) y ganadores (al menos 1).';
+        return;
+      }
+
+      fetch(`/raffle?qrCount=${qrCount}&winnerCount=${winnerCount}`, {
+        method: 'POST'
+      })
+        .then(response => response.text())
+        .then(() => {
+          document.getElementById('message').innerText = `Códigos QR generados: ${qrCount}, Ganadores: ${winnerCount}`;
+          loadWinningNumber(); // Actualiza el número ganador al instante
+        })
+        .catch(error => {
+          console.error('Error al generar rifas:', error);
+          document.getElementById('message').innerText = 'Error al generar los códigos QR';
+        });
+    }
+
+  </script>
+</body>
+</html>

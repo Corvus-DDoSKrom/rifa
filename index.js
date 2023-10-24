@@ -1,97 +1,72 @@
-const express = require('express');
-const QRCode = require('qrcode');
-const fs = require('fs');
-const app = express();
-const cors = require('cors');
-const port = 3000;
+import express from 'express'
+import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import dotenv from 'dotenv'
+import indexRoutes from './routes/index.routes.js'
+import { PORT } from './config/config.js'
+import { generateQRCodeForRaffles, winningNumbers } from './controllers/raffleController.js'
 
-app.use(express.static('public'));
-app.use(cors());
+const app = express()
 
-let winningNumber = null;
+dotenv.config({ path: './env/.env' })
 
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
+app.use(cors())
+app.use(cookieParser())
+
+app.set('views', ['./public/views'])
+app.set('view engine', 'ejs')
+
+app.use(express.static('./public'))
+app.use(express.static('./public/views'))
+app.use(express.static('./public/components'))
+app.use(express.static('./public/assets/css'))
+app.use(express.static('./public/assets/img'))
+app.use(express.static('./public/assets/js'))
+
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
+
+app.use(function (req, res, next) {
+  if (!req.user) {
+    res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate')
+  }
+  next()
+})
 
 app.get('/check', (req, res) => {
-    const userNumber = req.query.number;
-    if (userNumber == winningNumber) {
-        res.json({ isWinner: true });
-    } else {
-        res.json({ isWinner: false });
-    }
-});
+  const userNumber = req.query.number
 
-app.get('/winningNumber', (req, res) => {
-    res.json({ winningNumber });
-});
+  // Verifica si el número del usuario está en winningNumbers
+  const isWinner = winningNumbers.includes(userNumber)
+
+  res.json({ isWinner })
+})
+
+app.get('/winningNumbers', (req, res) => {
+  res.json({ winningNumbers })
+})
 
 app.post('/raffle', (req, res) => {
-    generateQRCodeForRaffles(100)
-        .then(() => {
-            res.send('Códigos QR generados para las rifas');
-        })
-        .catch(error => {
-            console.error('Error al generar códigos QR:', error);
-            res.status(500).send('Error al generar códigos QR');
-        });
-});
+  const qrCount = parseInt(req.query.qrCount) // Obtiene la cantidad de códigos QR deseada
+  const winnerCount = parseInt(req.query.winnerCount) // Obtiene la cantidad de ganadores
 
-async function generateQRCodeForRaffles(count) {
-    const raffles = [];
-    const generatedQRs = new Set();
+  if (qrCount < 1 || winnerCount < 1) {
+    res.status(400).send('Ingrese una cantidad válida de códigos QR y ganadores (al menos 1 de cada uno).')
+    return
+  }
 
-    // Genera el número ganador
-    winningNumber = generateWinningNumber();
-    const winningQRCodeData = `http://192.168.100.44:3000/check.html?raffle=${winningNumber}`;
-    const winningQRFilePath = `public/qrCodes/qrCode_${winningNumber}.png`;
-    raffles.push({
-        number: winningNumber,
-        qrCodePath: winningQRFilePath
-    });
-    await generateQRCode(winningQRCodeData, winningQRFilePath);
+  generateQRCodeForRaffles(qrCount, winnerCount)
+    .then(() => {
+      res.send(`Códigos QR generados: ${qrCount}, Ganadores: ${winnerCount}`)
+    })
+    .catch(error => {
+      console.error('Error al generar códigos QR:', error)
+      res.status(500).send('Error al generar códigos QR')
+    })
+})
 
-    // Genera los demás códigos QR
-    while (raffles.length < count) {
-        const raffleNumber = generateRandomRaffleNumber(3);
-        if (!generatedQRs.has(raffleNumber)) {
-            generatedQRs.add(raffleNumber);
-            const qrCodeData = `http://192.168.100.44:3000/check.html?raffle=${raffleNumber}`;
-            const filePath = `public/qrCodes/qrCode_${raffleNumber}.png`;
+app.use(indexRoutes)
 
-            raffles.push({
-                number: raffleNumber,
-                qrCodePath: filePath
-            });
-            await generateQRCode(qrCodeData, filePath);
-        }
-    }
-
-    console.log('Número ganador:', winningNumber);
-}
-
-function generateWinningNumber() {
-    return Math.floor(Math.random() * 900) + 100;
-}
-
-async function generateQRCode(data, filePath) {
-    return new Promise((resolve, reject) => {
-        QRCode.toFile(filePath, data, (err) => {
-            if (err) {
-                console.error(`Error al generar el código QR:`, err);
-                reject(err);
-            } else {
-                resolve();
-            }
-        });
-    });
-}
-
-function generateRandomRaffleNumber(length) {
-    return Math.floor(Math.random() * (10 ** length)).toString().padStart(length, '0');
-}
-
-app.listen(port, () => {
-    console.log(`Servidor escuchando en el puerto ${port}`);
-});
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`)
+})
