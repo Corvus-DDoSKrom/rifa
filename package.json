@@ -24,12 +24,13 @@
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.0",
     "mysql2": "^3.3.3",
-    "qrcode": "^1.5.3"
+    "qrcode": "^1.5.3",
+    "vercel": "^32.5.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",
-    "standard": "^17.1.0",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "standard": "^17.1.0"
   },
   "eslintConfig": {
     "extends": "./node_modules/standard/eslintrc.json"
