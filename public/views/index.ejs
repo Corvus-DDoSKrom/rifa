@@ -7,7 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-  <div class=" bg-gray-900 text-white py-4 flex items-center justify-between">
+  <div class="bg-gray-900 text-white py-4 flex items-center justify-between">
     <h1 class="mx-auto text-3xl">Panel de Administración</h1>
     <a href="/logout" class="mx-auto text-red-500 hover:text-red-600">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -20,82 +20,140 @@
 
   <div class="container mx-auto mt-8 p-4 bg-white shadow-lg rounded-lg">
     <label for="winnerCount" class="text-lg font-semibold mb-2">Cantidad de Ganadores:</label>
-    <input type="number" id="winnerCount" min="1" class="border rounded p-2 mb-4">
+    <input type="number" id="winnerCount" min="1" max="10000" class="border rounded p-2 mb-4">
+    <br>
+    <label for="prize" class="text-lg font-semibold mb-2">Premio:</label>
+    <input type="text" id="prize" class="border rounded p-2 mb-4">
     <br>
     <label for="qrCount" class="text-lg font-semibold mb-2">Cantidad de Códigos QR:</label>
     <input type="number" id="qrCount" min="1" max="10000" class="border rounded p-2 mb-4">
     <button id="generateRaffle" onclick="generateRaffles()" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Generar Rifas</button>
     <p id="message" class="mt-2 text-red-600"></p>
-    <!-- Agregar un div contenedor para los números ganadores -->
-    <div id="winningNumbers">
-      <h3 class="text-lg font-semibold">Números Ganadores</h3>
-      <table class="border-collapse border border-gray-600">
-        <thead>
-          <tr>
-            <th class="border border-gray-600 p-2">Ganador</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Los números ganadores se mostrarán aquí -->
-        </tbody>
-      </table>
+    <!-- Agregar un div contenedor para los números ganadores, números no ganadores y "Vuelva a participar" -->
+    <div id="raffleResults">
+      <div id="winningNumbers" class="w-1/2 pr-4">
+        <h3 class="text-lg font-semibold">Números Ganadores</h3>
+        <table class="border-collapse border border-gray-600">
+          <thead>
+            <tr>
+              <th class="border border-gray-600 p-2">Ganador</th>
+              <th class="border border-gray-600 p-2">Premio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Los números ganadores se mostrarán aquí -->
+          </tbody>
+        </table>
+      </div>
+      <div id="losingNumbers" class="w-1/2 pl-4">
+        <h3 class="text-lg font-semibold">Números No Ganadores</h3>
+        <table class="border-collapse border border-gray-600">
+          <thead>
+            <tr>
+              <th class="border border-gray-600 p-2">Número</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Los números no ganadores se mostrarán aquí -->
+          </tbody>
+        </table>
+        <h3 class="text-lg font-semibold mt-4">¡Vuelva a participar!</h3>
+        <table class="border-collapse border border-gray-600">
+          <tbody>
+            <!-- "¡Vuelva a participar!" se mostrará aquí -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
-
   <script src="qrcode.min.js"></script>
   <script>
-    async function loadWinningNumber() {
+    // Espera hasta que el DOM esté completamente cargado
+    document.addEventListener("DOMContentLoaded", function() {
+      loadWinningNumbers();
+    });
+  
+    async function loadWinningNumbers() {
       try {
         const response = await fetch('/winningNumbers');
         if (response.ok) {
           const data = await response.json();
-          const winningNumbers = data.winningNumbers;
-          
-          // Selecciona el elemento contenedor de la tabla
-          const tableBody = document.querySelector('#winningNumbers tbody');
-          // Limpia el contenido anterior
-          tableBody.innerHTML = '';
-          
-          // Agrega filas a la tabla para cada número ganador
-          winningNumbers.forEach(number => {
-            const row = tableBody.insertRow();
-            const cell = row.insertCell();
-            cell.textContent = number;
-            cell.classList.add('border', 'border-gray-600', 'p-2');
-          });
+          const qrCodesData = data.qrCodes; // Renombrar la variable local
+          const winningNumbersData = data.winningNumbers; // Renombrar la variable local
+
+          const tableWinningNumbers = document.querySelector('#winningNumbers table tbody');
+          const tableLosingNumbers = document.querySelector('#losingNumbers table tbody');
+
+          // Limpiar las tablas antes de agregar nuevos datos
+          tableWinningNumbers.innerHTML = '';
+          tableLosingNumbers.innerHTML = '';
+
+          const prize = document.getElementById('prize').value;
+
+          for (const qrCode of qrCodesData) {
+            const row = document.createElement('tr');
+            const codeCell = document.createElement('td');
+            codeCell.textContent = qrCode.code;
+            codeCell.classList.add('border', 'border-gray-600', 'p-2');
+            row.appendChild(codeCell);
+
+            if (winningNumbersData.includes(qrCode.code)) { // Utiliza winningNumbersData en lugar de winningNumbers
+              // Si es un número ganador, muestra el premio
+              const prizeCell = document.createElement('td');
+              prizeCell.textContent = prize;
+              prizeCell.classList.add('border', 'border-gray-600', 'p-2');
+              row.appendChild(prizeCell);
+              tableWinningNumbers.appendChild(row);
+            } else {
+              // Si no es un número ganador, muestra "¡Vuelva a participar"
+              const tryAgainCell = document.createElement('td');
+              tryAgainCell.textContent = '¡Vuelva a participar!';
+              tryAgainCell.classList.add('border', 'border-gray-600', 'p-2');
+              row.appendChild(tryAgainCell);
+              tableLosingNumbers.appendChild(row);
+            }
+          }
         } else {
-          document.getElementById('winningNumbers').textContent = 'No se pudo cargar el número ganador';
+          document.getElementById('raffleResults').textContent = 'No se pudo cargar el número ganador';
         }
       } catch (error) {
-        console.error('Error al cargar el número ganador:', error);
-        document.getElementById('winningNumbers').textContent = 'Error al cargar el número ganador';
+        console.error('Error al cargar los números ganadores:', error);
+        document.getElementById('raffleResults').textContent = 'Error al cargar los números ganadores';
       }
     }
   </script>
+  
+
+  
+  
   <script>
     function generateRaffles() {
+      console.log('generateRaffles() se ha llamado')
       const qrCount = document.getElementById('qrCount').value;
-      const winnerCount = document.getElementById('winnerCount').value; // Obtén la cantidad de ganadores
+      const winnerCount = document.getElementById('winnerCount').value;
+      const prize = document.getElementById('prize').value; // Obtén el premio del formulario
 
       if (qrCount < 1 || qrCount > 10000 || winnerCount < 1) {
         document.getElementById('message').innerText = 'Ingrese una cantidad válida de códigos QR (entre 1 y 10000) y ganadores (al menos 1).';
         return;
       }
-
       fetch(`/raffle?qrCount=${qrCount}&winnerCount=${winnerCount}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Agrega la cabecera Content-Type
+        },
+        body: JSON.stringify({ prize: prize }), // Envía el premio al servidor
       })
         .then(response => response.text())
         .then(() => {
           document.getElementById('message').innerText = `Códigos QR generados: ${qrCount}, Ganadores: ${winnerCount}`;
-          loadWinningNumber(); // Actualiza el número ganador al instante
+          loadWinningNumbers();
         })
         .catch(error => {
           console.error('Error al generar rifas:', error);
           document.getElementById('message').innerText = 'Error al generar los códigos QR';
         });
     }
-
   </script>
 </body>
 </html>

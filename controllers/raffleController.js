@@ -1,47 +1,64 @@
 import QRCode from 'qrcode'
 import fs from 'fs'
 
-let winningNumbers = []
+const qrCodes = new Set()
+const winningNumbers = new Set()
 
-async function generateQRCodeForRaffles (qrCount, winnerCount) {
+async function generateQRCodeForRaffles (qrCount, winnerCount, prize, prizes) {
   cleanUpQRCodes()
+  qrCodes.clear()
 
-  // Crear un conjunto de códigos QR para los ganadores
-  const winningQRs = new Set()
+  const winningNumbers = generateWinningNumbers(winnerCount, qrCount)
 
-  while (winningQRs.size < winnerCount) {
+  for (const raffleNumber of winningNumbers) {
+    const prizeForWinner = prize
+    qrCodes.add({ code: raffleNumber, isWinner: true, prize: prizeForWinner })
+  }
+
+  // Genera el resto de los códigos no ganadores
+  while (qrCodes.size < qrCount) {
     const raffleNumber = generateRandomRaffleNumber(8)
-    winningQRs.add(raffleNumber)
+    if (!winningNumbers.includes(raffleNumber)) {
+      // Solo agrega el código si no es un ganador
+      qrCodes.add({ code: raffleNumber, isWinner: false, prize: '' })
+    }
   }
 
-  winningNumbers = Array.from(winningQRs)
-  console.log('Números ganadores:', winningNumbers)
+  console.log('Cantidad de qrCodes:', qrCodes.size)
 
-  // Crear códigos QR para todos los códigos (ganadores y no ganadores)
-  const allQRs = Array.from(winningQRs) // Copia los ganadores al conjunto de todos los códigos QR
+  for (const qrCode of qrCodes) {
+    const qrCodeData = `http://juegosguarani.com/check.html?raffle=${qrCode.code}`
+    const filePath = `public/qrCodes/qrCode_${qrCode.code}.png`
 
-  while (allQRs.length < qrCount) {
+    try {
+      await generateQRCode(qrCodeData, filePath)
+      console.log(`Generado QR: ${qrCode.code}`)
+    } catch (err) {
+      console.error('Error al generar el código QR:', err)
+      // Trata el error apropiadamente
+    }
+  }
+}
+
+function generateWinningNumbers (winnerCount, qrCount) {
+  const winningNumbers = new Set()
+  while (winningNumbers.size < winnerCount) {
     const raffleNumber = generateRandomRaffleNumber(8)
-    allQRs.push(raffleNumber)
+    winningNumbers.add(raffleNumber)
   }
-
-  for (let i = 0; i < allQRs.length; i++) {
-    const raffleNumber = allQRs[i]
-    const qrCodeData = `http://juegosguarani.com/check.html?raffle=${raffleNumber}`
-    const filePath = `public/qrCodes/qrCode_${raffleNumber}.png`
-
-    await generateQRCode(qrCodeData, filePath)
-    console.log(`Generado QR ${i + 1} de ${qrCount}`)
-  }
+  return Array.from(winningNumbers)
 }
 
 function generateRandomRaffleNumber (length) {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let result = ''
+  const result = []
   for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length))
+    const randomCharacter = characters.charAt(Math.floor(Math.random() * characters.length))
+    result.push(randomCharacter)
   }
-  return result
+  const raffleNumber = result.join('')
+  console.log(`Número QR generado: ${raffleNumber}`)
+  return raffleNumber
 }
 
 function cleanUpQRCodes () {
@@ -56,16 +73,18 @@ function cleanUpQRCodes () {
 }
 
 async function generateQRCode (data, filePath) {
+  console.log(`Generando código QR para: ${data}, Guardando en: ${filePath}`)
   return new Promise((resolve, reject) => {
     QRCode.toFile(filePath, data, (err) => {
       if (err) {
-        console.error('Error al generar el código QR:', err)
+        console.error(`Error al generar el código QR para ${data}:`, err)
         reject(err)
       } else {
+        console.log(`Generado QR: ${filePath}`)
         resolve()
       }
     })
   })
 }
 
-export { generateQRCodeForRaffles, winningNumbers }
+export { generateQRCodeForRaffles, qrCodes, winningNumbers }

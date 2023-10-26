@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
 import indexRoutes from './routes/index.routes.js'
 import { PORT } from './config/config.js'
-import { generateQRCodeForRaffles, winningNumbers } from './controllers/raffleController.js'
+import { generateQRCodeForRaffles, qrCodes, winningNumbers } from './controllers/raffleController.js'
 
 const app = express()
 
@@ -13,7 +13,7 @@ dotenv.config({ path: './env/.env' })
 app.use(cors())
 app.use(cookieParser())
 
-app.set('views', ['./public/views'])
+app.set('views', './public/views')
 app.set('view engine', 'ejs')
 
 app.use(express.static('./public'))
@@ -33,36 +33,41 @@ app.use(function (req, res, next) {
   next()
 })
 
+app.get('/getQrCodes', (req, res) => {
+  res.json({ qrCodes })
+})
+
 app.get('/check', (req, res) => {
   const userNumber = req.query.number
-
-  // Verifica si el número del usuario está en winningNumbers
-  const isWinner = winningNumbers.includes(userNumber)
-
+  const isWinner = winningNumbers.has(userNumber)
   res.json({ isWinner })
 })
 
 app.get('/winningNumbers', (req, res) => {
-  res.json({ winningNumbers })
+  const winningNumbersArray = Array.from(winningNumbers)
+  res.json({ qrCodes: Array.from(qrCodes), winningNumbers: winningNumbersArray })
 })
 
-app.post('/raffle', (req, res) => {
-  const qrCount = parseInt(req.query.qrCount) // Obtiene la cantidad de códigos QR deseada
-  const winnerCount = parseInt(req.query.winnerCount) // Obtiene la cantidad de ganadores
+app.post('/raffle', async (req, res) => {
+  const qrCount = parseInt(req.query.qrCount)
+  const winnerCount = parseInt(req.query.winnerCount)
+  const prize = req.body.prize
 
   if (qrCount < 1 || winnerCount < 1) {
     res.status(400).send('Ingrese una cantidad válida de códigos QR y ganadores (al menos 1 de cada uno).')
     return
   }
 
-  generateQRCodeForRaffles(qrCount, winnerCount)
-    .then(() => {
-      res.send(`Códigos QR generados: ${qrCount}, Ganadores: ${winnerCount}`)
-    })
-    .catch(error => {
-      console.error('Error al generar códigos QR:', error)
-      res.status(500).send('Error al generar códigos QR')
-    })
+  // Define los premios para los códigos ganadores
+  const prizes = {} // Aquí debes definir los premios asociados a los códigos ganadores
+
+  try {
+    await generateQRCodeForRaffles(qrCount, winnerCount, prize, prizes)
+    res.send(`Códigos QR generados: ${qrCount}, Ganadores: ${winnerCount}`)
+  } catch (error) {
+    console.error('Error al generar códigos QR:', error)
+    res.status(500).send('Error al generar códigos QR')
+  }
 })
 
 app.use(indexRoutes)
